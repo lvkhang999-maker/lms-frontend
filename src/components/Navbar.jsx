@@ -14,9 +14,14 @@ function Navbar() {
   };
 
   return (
-    <nav style={styles.navbar}>
-      <div style={styles.leftBrand}>
-        <Link to="/" style={styles.logo}>📘 CTUT THƯ VIỆN</Link>
+    <nav style={styles.navbar} className="main-navbar">
+      <div style={styles.leftBrand} className="navbar-left">
+        
+        <Link to="/" style={styles.logoWrapper}>
+          <img src="./logo.png" alt="CTUT Logo" style={styles.logoImg} />
+          <span style={styles.logoText}></span>
+        </Link>
+        
         <Link to="/" style={styles.navLink}>Trang chủ</Link>
         {isLoggedIn && (
           <Link to={isAdmin ? "/admin/history" : "/history"} style={styles.navLink}>
@@ -25,11 +30,10 @@ function Navbar() {
         )}
       </div>
 
-      <div style={styles.rightMenu}>
+      <div style={styles.rightMenu} className="navbar-right">
         {isLoggedIn ? (
-          <div style={styles.userZone}>
+          <div style={styles.userZone} className="navbar-user-zone">
             
-            {/* 🔥 NÂNG CẤP: Chuyển div thành Link dẫn đến /profile kèm Avatar động từ Cloudinary */}
             <Link to="/profile" style={styles.profileBadgeLink}>
               <img 
                 src={currentUser?.avatar || 'https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg'} 
@@ -42,7 +46,6 @@ function Navbar() {
               </small>
             </Link>
 
-            {/* Nút chuyển đổi vùng quản trị nhanh nếu là Admin */}
             {isAdmin && (
               <Link to="/admin" style={styles.adminBtn}>⚙ Không gian Admin</Link>
             )}
@@ -61,17 +64,19 @@ function Navbar() {
 }
 
 const styles = {
-  navbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 24px', height: '64px', backgroundColor: '#0056b3', color: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', position: 'sticky', top: 0, zIndex: 1000, fontFamily: 'Arial, sans-serif' },
+  navbar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', height: '80px', backgroundColor: '#0056b3', color: '#fff', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', position: 'sticky', top: 0, zIndex: 1000, fontFamily: 'Arial, sans-serif' },
   leftBrand: { display: 'flex', alignItems: 'center', gap: '24px' },
-  logo: { fontSize: '18px', fontWeight: 'bold', color: '#fff', textDecoration: 'none', letterSpacing: '0.5px' },
+  
+  // 🔥 STYLES MỚI: Định hình cấu trúc bọc ảnh logo và chữ thương hiệu song hành
+  logoWrapper: { display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none', color: '#fff', height: '150%' },
+  logoImg: { height: '60px', width: 'auto', objectFit: 'contain' }, // Ép chiều cao logo khít khao thanh Navbar
+  logoText: { fontSize: '18px', fontWeight: 'bold', letterSpacing: '0.5px' },
+
   navLink: { color: 'rgba(255,255,255,0.85)', textDecoration: 'none', fontSize: '14px', fontWeight: '500', transition: '0.2s' },
   rightMenu: { display: 'flex', alignItems: 'center' },
   userZone: { display: 'flex', alignItems: 'center', gap: '16px' },
-  
-  // 🔥 STYLES MỚI CHO LINK BADGE HỒ SƠ & AVATAR TRÒN KHÍT KHAO
   profileBadgeLink: { display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(255,255,255,0.1)', padding: '6px 14px', borderRadius: '20px', fontSize: '14px', color: '#fff', textDecoration: 'none', transition: '0.2s' },
   avatarImg: { width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(255,255,255,0.4)' },
-  
   userName: { fontWeight: 'bold' },
   roleAdmin: { color: '#ffc107', fontWeight: 'bold' },
   roleStudent: { color: '#d1ecf1' },

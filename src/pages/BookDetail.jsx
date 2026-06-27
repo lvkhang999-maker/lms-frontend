@@ -12,7 +12,15 @@ function BookDetail() {
   const [relatedBooks, setRelatedBooks] = useState([]); 
   const [isLoading, setIsLoading] = useState(true);
   const [isBorrowing, setIsBorrowing] = useState(false);
-  const { token, isLoggedIn } = useSelector((state) => state.auth);
+  const { token, isLoggedIn, currentUser } = useSelector((state) => state.auth);
+
+  const [showSlipModal, setShowSlipModal] = useState(false); 
+  const [showSuccessModal, setShowSuccessModal] = useState(false); 
+  const [studentPhone, setStudentPhone] = useState(""); 
+  const [borrowNotes, setBorrowNotes] = useState(""); 
+
+  // 🔥 GIẢI PHÁP SỬA LỖI IMPURE: Khởi tạo State lưu trữ chữ ngày hẹn trả thay vì tính trực tiếp khi render
+  const [formattedDueDate, setFormattedDueDate] = useState("");
 
   const [prevId, setPrevId] = useState(id);
 
@@ -24,7 +32,6 @@ function BookDetail() {
   }
 
   useEffect(() => {
-    // 1. Tải thông tin sách chính (Công khai)
     fetch(`${API_URL}/books/${id}`)
       .then((res) => {
         if (!res.ok) throw new Error("Không thể tải thông tin cuốn sách này!");
@@ -39,7 +46,6 @@ function BookDetail() {
         setIsLoading(false);
       });
 
-    // 2. Tải sách liên quan cùng thể loại (Công khai - Sinh viên/Khách đều xem được)
     fetch(`${API_URL}/books/${id}/related`)
       .then((res) => res.json())
       .then((data) => {
@@ -55,23 +61,48 @@ function BookDetail() {
       navigate('/login');
       return;
     }
+    
+    // 🔥 GIẢI PHÁP SỬA LỖI IMPURE: Tính toán ngày hẹn trả an toàn bên trong sự kiện click chuột
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + 14);
+    setFormattedDueDate(targetDate.toLocaleDateString('vi-VN'));
+
+    setStudentPhone("");
+    setBorrowNotes("");
+    setShowSlipModal(true);
+  };
+
+  const handleConfirmBorrowAction = () => {
+    // 🔥 BIỆN PHÁP BẢO MẬT: Tạo biểu thức chính quy (Regex) kiểm thử định dạng số điện thoại di động Việt Nam
+    const phoneRegex = /^(03|05|07|08|09)\d{8}$/;
+    
+    if (!phoneRegex.test(studentPhone.trim())) {
+      toast.warning("⚠️ Số điện thoại không hợp lệ! Vui lòng nhập đúng định dạng 10 chữ số của Việt Nam (bắt đầu bằng các đầu số 03, 05, 07, 08, 09).");
+      return;
+    }
 
     setIsBorrowing(true);
+    
     fetch(`${API_URL}/borrows`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ bookId: book._id })
+      body: JSON.stringify({ 
+        bookId: book._id,
+        phone: studentPhone.trim(),
+        notes: borrowNotes.trim()
+      })
     })
       .then((res) => {
         if (!res.ok) return res.json().then((err) => { throw new Error(err.message); });
         return res.json();
       })
       .then(() => {
-        toast.success(`📖 Đăng ký mượn thành công! Thời hạn giữ sách là 14 ngày.`);
         setBook(prev => ({ ...prev, quantity: prev.quantity - 1 }));
+        setShowSlipModal(false); 
+        setShowSuccessModal(true); 
       })
       .catch((err) => toast.error(err.message || "Có lỗi xảy ra!"))
       .finally(() => setIsBorrowing(false));
@@ -102,7 +133,7 @@ function BookDetail() {
           </div>
           <p style={styles.hintText}>ℹ️ Quy chế: Mượn tối đa 3 cuốn cùng lúc, thời hạn hoàn trả trong vòng 14 ngày.</p>
           <button onClick={handleBorrowClick} disabled={isOutOfStock || isBorrowing} style={styles.borrowBtn(isOutOfStock || isBorrowing)}>
-            {isBorrowing ? "Đang xử lý..." : isOutOfStock ? "Đã hết sách khả dụng" : "⚡ Đăng ký mượn sách"}
+            {isOutOfStock ? "Đã hết sách khả dụng" : "⚡ Đăng ký mượn sách"}
           </button>
         </div>
       </div>
@@ -123,7 +154,6 @@ function BookDetail() {
         </div>
       </div>
 
-      {/* HIỂN THỊ SÁCH LIÊN QUAN CHO SINH VIÊN */}
       {relatedBooks.length > 0 && (
         <div style={styles.relatedBox}>
           <h3 style={styles.sectionTitle}>📚 Có thể bạn muốn đọc (Cùng thể loại)</h3>
@@ -140,6 +170,75 @@ function BookDetail() {
           </div>
         </div>
       )}
+
+      {showSlipModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.slipBox}>
+            <div style={styles.slipHeader}>
+              <h3 style={{ margin: 0, fontSize: '16px' }}>🎫 PHIẾU ĐĂNG KÝ MƯỢN SÁCH ĐIỆN TỬ</h3>
+              <button onClick={() => setShowSlipModal(false)} style={styles.closeXBtn}>&times;</button>
+            </div>
+            
+            <div style={styles.slipBody}>
+              <div style={styles.slipRow}><span style={styles.slipLabel}>Độc giả mượn:</span><strong style={styles.slipValue}>{currentUser?.name}</strong></div>
+              <div style={styles.slipRow}><span style={styles.slipLabel}>Mã định danh Email:</span><span style={styles.slipValue}>{currentUser?.email}</span></div>
+              <div style={styles.slipRow}><span style={styles.slipLabel}>Tên cuốn sách:</span><strong style={{...styles.slipValue, color: '#0056b3'}}>{book.title}</strong></div>
+              <div style={styles.slipRow}><span style={styles.slipLabel}>Thời hạn giữ sách:</span><span style={styles.slipValue}>14 ngày (Hạn trả: {formattedDueDate})</span></div>
+              
+              <div style={styles.inputGroup}>
+                <label style={styles.inputLabel}>Số điện thoại nhận thông báo báo hạn (Bắt buộc):</label>
+                <input 
+                  type="text" 
+                  maxLength="10"
+                  placeholder="Nhập số điện thoại di động (Ví dụ: 0394...)" 
+                  value={studentPhone} 
+                  onChange={(e) => setStudentPhone(e.target.value)} 
+                  style={styles.slipInput}
+                />
+              </div>
+
+              <div style={styles.inputGroup}>
+                <label style={styles.inputLabel}>Ghi chú gửi Thủ thư quầy (Nếu có):</label>
+                <textarea 
+                  rows="2" 
+                  placeholder="Ví dụ: Xin mượn bản đính kèm CD, hoặc hẹn nhận sách ca chiều..." 
+                  value={borrowNotes} 
+                  onChange={(e) => setBorrowNotes(e.target.value)} 
+                  style={styles.slipTextarea}
+                />
+              </div>
+            </div>
+
+            <div style={styles.slipFooter}>
+              <button onClick={() => setShowSlipModal(false)} style={styles.cancelActionBtn} disabled={isBorrowing}>Hủy yêu cầu</button>
+              <button 
+                onClick={handleConfirmBorrowAction} 
+                disabled={isBorrowing || !studentPhone.trim()} 
+                style={styles.confirmActionBtn(isBorrowing || !studentPhone.trim())}
+              >
+                {isBorrowing ? "Đang ghi nhận..." : "Xác nhận đăng ký mượn"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSuccessModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.successBox}>
+            <div style={styles.successIconZone}>🎉</div>
+            <h3 style={styles.successTitle}>ĐĂNG KÝ GIỮ SÁCH THÀNH CÔNG!</h3>
+            <p style={styles.successText}>
+              Hệ thống trung tâm thư viện học viện đã phê duyệt và khởi tạo mã phiếu mượn điện tử thành công cho cuốn sách <strong>{book.title}</strong>.
+            </p>
+            <div style={styles.noticeCard}>
+              📌 <strong>Hướng dẫn nhận sách vật lý:</strong> Độc giả vui lòng mang theo Thẻ sinh viên CTUT hoặc CCCD hợp lệ đến gặp Thủ thư tại quầy phục vụ trong vòng <strong>48 giờ làm việc</strong> để hoàn tất thủ tục nhận sách tay. Sau thời gian này, phiếu giữ sách trực tuyến sẽ tự động hủy bỏ quy chế để nhường suất cho sinh viên khác.
+            </div>
+            <button onClick={() => setShowSuccessModal(false)} style={styles.successCloseBtn}>Tôi đã nắm rõ quy định</button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -173,7 +272,30 @@ const styles = {
   relatedImg: { width: '100%', height: '100%', objectFit: 'cover' },
   relatedInfo: { padding: '10px', display: 'flex', flexDirection: 'column', gap: '2px' },
   relatedTitle: { margin: 0, fontSize: '13px', color: '#212529', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  relatedAuthor: { margin: 0, fontSize: '11px', color: '#6c757d' }
+  relatedAuthor: { margin: 0, fontSize: '11px', color: '#6c757d' },
+
+  modalOverlay: { position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundColor: "rgba(0, 0, 0, 0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 9999, backdropFilter: 'blur(4px)', padding: '16px', boxSizing: 'border-box' },
+  slipBox: { width: "100%", maxWidth: "480px", backgroundColor: "#fff", borderRadius: "10px", boxShadow: "0 10px 30px rgba(0,0,0,0.15)", overflow: "hidden", display: "flex", flexDirection: "column" },
+  slipHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", backgroundColor: "#f8f9fa", borderBottom: "1px solid #dee2e6", color: "#333", fontWeight: "bold" },
+  closeXBtn: { background: "none", border: "none", fontSize: "22px", cursor: "pointer", color: "#6c757d", lineHeight: 1 },
+  slipBody: { padding: "20px", display: "flex", flexDirection: "column", gap: "10px" },
+  slipRow: { display: "flex", justifyContent: "space-between", fontSize: "14px", borderBottom: "1px dashed #f1f3f5", paddingBottom: "8px" },
+  slipLabel: { color: "#6c757d", fontWeight: "500" },
+  slipValue: { color: "#212529", textAlign: "right" },
+  inputGroup: { display: "flex", flexDirection: "column", gap: "6px", marginTop: "8px" },
+  inputLabel: { fontSize: "13px", color: "#333", fontWeight: "bold" },
+  slipInput: { width: "100%", padding: "10px", borderRadius: "4px", border: "1px solid #ced4da", fontSize: "13px", outline: "none", boxSizing: "border-box" },
+  slipTextarea: { width: "100%", padding: "10px", borderRadius: "4px", border: "1px solid #ced4da", fontSize: "13px", outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Arial" },
+  slipFooter: { display: "flex", gap: "12px", justifyContent: "flex-end", padding: "14px 20px", backgroundColor: "#f8f9fa", borderTop: "1px solid #dee2e6" },
+  cancelActionBtn: { padding: "8px 16px", backgroundColor: "#fff", color: "#6c757d", border: "1px solid #ced4da", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", fontSize: "13px" },
+  confirmActionBtn: (isDisabled) => ({ padding: "8px 18px", backgroundColor: isDisabled ? "#ced4da" : "#0056b3", color: "#fff", border: "none", borderRadius: "4px", cursor: isDisabled ? "not-allowed" : "pointer", fontWeight: "bold", fontSize: "13px" }),
+
+  successBox: { width: "100%", maxWidth: "460px", backgroundColor: "#fff", borderRadius: "12px", padding: "32px 24px", boxShadow: "0 12px 40px rgba(0,0,0,0.2)", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center" },
+  successIconZone: { width: "64px", height: "64px", borderRadius: "50%", backgroundColor: "#e8f5e9", color: "#2e7d32", fontSize: "32px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "16px" },
+  successTitle: { fontSize: "18px", color: "#2e7d32", margin: "0 0 10px 0", fontWeight: "bold", letterSpacing: "0.5px" },
+  successText: { fontSize: "14px", color: "#495057", margin: "0 0 16px 0", lineHeight: "1.5" },
+  noticeCard: { backgroundColor: "#fff3cd", color: "#856404", padding: "14px 16px", borderRadius: "6px", fontSize: "13px", textAlign: "justify", lineHeight: "1.5", borderLeft: "4px solid #ffc107", marginBottom: "24px" },
+  successCloseBtn: { width: "100%", padding: "12px", backgroundColor: "#2e7d32", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", fontSize: "14px", boxShadow: "0 2px 6px rgba(46,125,50,0.2)" }
 };
 
 export default BookDetail;

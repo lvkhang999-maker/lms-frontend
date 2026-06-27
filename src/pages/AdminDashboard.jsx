@@ -31,7 +31,7 @@ function AdminDashboard() {
         <Link to="/" style={styles.backLink}>← Xem trang chủ</Link>
       </header>
 
-      <div style={styles.mainLayout}>
+      <div style={styles.mainLayout} className="admin-layout">
         {/* Thanh Sidebar điều hướng tác vụ bên trái */}
         <Sidebar />
 

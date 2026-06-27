@@ -33,7 +33,7 @@ function Sidebar() {
   ];
 
   return (
-    <div style={styles.sidebar}>
+    <div style={styles.sidebar} className="admin-sidebar">
       <h4 style={styles.mainTitle}>🗃️ PHÂN HỆ QUẢN TRỊ</h4>
       
       <nav style={styles.navZone}>

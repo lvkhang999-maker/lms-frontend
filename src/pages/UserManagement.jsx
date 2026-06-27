@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { toast } from "react-toastify";
-import axiosClient from "../config/axiosClient"; // 🔥 Đã đồng bộ sang Trạm kiểm soát Axios trung tâm
+import axiosClient from "../config/axiosClient"; 
 
 function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -13,15 +13,17 @@ function UserManagement() {
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
+  
+  // 🔥 STATE MỚI: Quản lý số lượng độc giả hiển thị trên mỗi trang động
+  const [limit, setLimit] = useState(4); 
 
   const fetchUsers = () => {
-    // 🔥 SỬA LỖI DÒNG 36: Defer việc set state sang Macrotask tiếp theo để tránh xung đột luồng render của useEffect
     setTimeout(() => {
       setIsLoading(true);
     }, 0);
 
-    // Sử dụng axiosClient giúp code gọn gàng, tự đính kèm Token bảo mật
-    axiosClient.get(`/auth/users?page=${page}&limit=1&search=${search}`)
+    // 🔥 CẢI TIẾN: Thay thế giá trị ép cứng bằng biến dynamic ${limit}
+    axiosClient.get(`/auth/users?page=${page}&limit=${limit}&search=${search}`)
       .then((data) => {
         setUsers(data.users || []);
         setPages(data.pages || 1);
@@ -34,19 +36,24 @@ function UserManagement() {
       });
   };
 
+  // 🔥 ĐỒNG BỘ: Đưa [limit] vào dependency array để tự động kích hoạt gọi API khi admin thay đổi cấu hình
   useEffect(() => {
     if (token) fetchUsers();
-  }, [page, search, token]);
+  }, [page, search, limit, token]);
 
   const handleSearchChange = (e) => {
     setSearch(e.target.value);
     setPage(1);
   };
 
+  // 🔥 LUỒNG XỬ LÝ AN TOÀN: Khi đổi số lượng hiển thị, ép về trang 1 để chống lỗi tràn bộ nhớ phân đoạn
+  const handleLimitChange = (e) => {
+    setLimit(Number(e.target.value));
+    setPage(1); 
+  };
+
   const handleRoleChange = (id, currentRole) => {
     const newRole = currentRole === "Admin" ? "SinhVien" : "Admin";
-    
-    // 🔥 Đã xóa bỏ đoạn rác styles.API_BASE_FIX cũ, chuyển hẳn sang Axios kiên cố
     axiosClient.put(`/auth/users/${id}/role`, { role: newRole })
       .then((data) => {
         toast.success(data.message || "Thay đổi quyền thành công!");
@@ -59,7 +66,6 @@ function UserManagement() {
   };
 
   const handleToggleLock = (id) => {
-    // 🔥 Đồng bộ tuyến đường khóa tài khoản sang Axios sạch sẽ
     axiosClient.put(`/auth/users/${id}/toggle-lock`)
       .then((data) => {
         toast.success(data.message || "Thực thi tác vụ tài khoản thành công!");
@@ -87,7 +93,21 @@ function UserManagement() {
       </div>
 
       <div style={styles.tableCard}>
-        <h4 style={styles.cardHeading}>Danh sách tài khoản đăng ký ({totalUsers})</h4>
+        
+        {/* 🔥 GIAO DIỆN MỚI: Tích hợp thanh điều hướng Flexbox chứa bộ cấu hình Limit */}
+        <div style={styles.cardHeaderFlex}>
+          <h4 style={styles.cardHeading}>Danh sách tài khoản đăng ký ({totalUsers})</h4>
+          <div style={styles.limitZone}>
+            <span style={styles.limitLabel}>Dòng hiển thị:</span>
+            <select value={limit} onChange={handleLimitChange} style={styles.limitSelect}>
+              <option value={1}>1 thành viên / trang (Kiểm thử)</option>
+              <option value={2}>2 thành viên / trang</option>
+              <option value={4}>4 thành viên / trang</option>
+              <option value={10}>10 thành viên / trang</option>
+              <option value={20}>20 thành viên / trang</option>
+            </select>
+          </div>
+        </div>
         
         {isLoading ? (
           <div style={{ textAlign: "center", padding: "32px", color: "#0056b3", fontWeight: "bold" }}>🔄 Đang đồng bộ phân đoạn dữ liệu độc giả...</div>
@@ -171,7 +191,14 @@ const styles = {
   searchWrapper: { width: "100%", maxWidth: "400px" },
   searchInput: { width: "100%", padding: "10px 14px", borderRadius: "4px", border: "1px solid #ced4da", fontSize: "13px", outline: "none", boxSizing: "border-box" },
   tableCard: { backgroundColor: "#fff", padding: "24px", borderRadius: "8px", boxShadow: "0 2px 12px rgba(0,0,0,0.05)", border: "1px solid #e9ecef" },
-  cardHeading: { margin: "0 0 16px 0", fontSize: "16px", color: "#212529", fontWeight: "bold" },
+  
+  // STYLES MỚI: Khung điều phối thanh tiêu đề và combobox chọn Limit
+  cardHeaderFlex: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" },
+  cardHeading: { margin: 0, fontSize: "16px", color: "#212529", fontWeight: "bold" },
+  limitZone: { display: "flex", alignItems: "center", gap: "8px" },
+  limitLabel: { fontSize: "13px", color: "#6c757d", fontWeight: "500" },
+  limitSelect: { padding: "6px 10px", borderRadius: "4px", border: "1px solid #ced4da", fontSize: "13px", outline: "none", cursor: "pointer", backgroundColor: "#fff", color: "#495057", fontWeight: "500" },
+
   table: { width: "100%", borderCollapse: "collapse", fontSize: "14px" },
   thRow: { backgroundColor: "#f8f9fa" },
   th: { padding: "12px 16px", textAlign: "left", color: "#495057", fontWeight: "bold", borderBottom: "2px solid #dee2e6" },

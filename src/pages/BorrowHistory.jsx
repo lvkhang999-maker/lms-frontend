@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { toast } from 'react-toastify';
-import axiosClient from "../config/axiosClient"; // 🔥 ĐỒNG BỘ: Chuyển sang dùng trạm trung chuyển Axios
+import axiosClient from "../config/axiosClient"; 
 
 function BorrowHistory() {
   const [records, setRecords] = useState([]);
@@ -18,7 +18,6 @@ function BorrowHistory() {
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [recordIdToReturn, setRecordIdToReturn] = useState(null);
 
-  // Nâng cấp hàm nạp dữ liệu bằng Axios gọn gàng
   const fetchRecords = () => {
     const url = isAdmin ? '/borrows/all' : '/borrows/my-records';
     
@@ -37,8 +36,6 @@ function BorrowHistory() {
   useEffect(() => { 
     if (token) fetchRecords(); 
   }, [isAdmin, token]);
-
-  // ❌ ĐÃ XÓA BỎ HOÀN TOÀN KHỐI USEEFFECT GÂY LỖI CASCADING RENDERS TRÊN DÒNG 45!
 
   const getSafeDueDate = (record) => {
     if (record.dueDate) return new Date(record.dueDate);
@@ -93,8 +90,9 @@ function BorrowHistory() {
     const studentName = r.user?.name?.toLowerCase() || '';
     const studentEmail = r.user?.email?.toLowerCase() || '';
     const bookTitle = r.book?.title?.toLowerCase() || '';
+    const studentPhone = r.phone?.toLowerCase() || ''; // 🔥 Lọc thêm theo số điện thoại khi tìm kiếm
 
-    return studentName.includes(search) || studentEmail.includes(search) || bookTitle.includes(search);
+    return studentName.includes(search) || studentEmail.includes(search) || bookTitle.includes(search) || studentPhone.includes(search);
   });
 
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -127,9 +125,8 @@ function BorrowHistory() {
         📋 {isAdmin ? 'Hệ thống Quản lý Phiếu Mượn Toàn Trường' : 'Lịch sử Mượn Sách Cá Nhân'}
       </h2>
       
-      <div style={isAdmin ? {} : { backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+      <div style={isAdmin ? {} : { backgroundColor: '#fff', padding: '20px', borderRadius: '#8px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
         
-        {/* 🔥 TÍCH HỢP ĐỒNG THỜI: Đổi tab kèm chuyển trang về 1 chủ động bảo vệ hiệu năng */}
         <div style={styles.tabContainer}>
           <button onClick={() => { setActiveTab('ALL'); setCurrentPage(1); }} style={styles.tabButton(activeTab === 'ALL', '#007bff')}>
             📋 Tất cả ({records.length})
@@ -145,11 +142,10 @@ function BorrowHistory() {
           </button>
         </div>
 
-        {/* 🔥 TÍCH HỢP ĐỒNG THỜI: Gõ phím tìm kiếm tự động đưa trang hiện tại về 1 */}
         <div style={styles.searchContainer}>
           <input 
             type="text" 
-            placeholder={isAdmin ? "🔍 Lọc theo tên SV, Email hoặc tên cuốn sách..." : "🔍 Tìm kiếm theo tên cuốn sách đã mượn..."}
+            placeholder={isAdmin ? "🔍 Lọc theo tên SV, SĐT, Email hoặc tên cuốn sách..." : "🔍 Tìm kiếm theo tên cuốn sách đã mượn..."}
             value={searchTerm}
             onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} 
             style={styles.searchInput}
@@ -182,10 +178,20 @@ function BorrowHistory() {
                         {isAdmin && (
                           <td style={styles.td}>
                             <strong>{r.user?.name}</strong><br/>
-                            <small style={{color:'#666'}}>{r.user?.email}</small>
+                            <small style={{color:'#666', display:'block', marginBottom:'2px'}}>{r.user?.email}</small>
+                            {/* 🔥 HIỂN THỊ MỚI: Bơm Số điện thoại của phiếu vào đây */}
+                            <small style={{color:'#0056b3', fontWeight:'bold'}}>📞 SĐT: {r.phone || "Chưa cung cấp"}</small>
                           </td>
                         )}
-                        <td style={styles.td}>{r.book?.title || <span style={{color:'#aaa'}}>Sách đã bị xóa</span>}</td>
+                        <td style={styles.td}>
+                          <strong>{r.book?.title || <span style={{color:'#aaa'}}>Sách đã bị xóa</span>}</strong>
+                          {/* 🔥 HIỂN THỊ MỚI: Nếu sinh viên có để lại ghi chú, render khối chữ tím dịu mắt ở đây */}
+                          {r.notes && (
+                            <div style={{marginTop: '4px', fontSize: '12px', color: '#6f42c1', fontStyle: 'italic', backgroundColor: '#f3e5f5', padding: '4px 8px', borderRadius: '4px', display: 'inline-block'}}>
+                              💬 Ghi chú: {r.notes}
+                            </div>
+                          )}
+                        </td>
                         <td style={styles.td}>{new Date(r.borrowDate).toLocaleDateString('vi-VN')}</td>
                         <td style={styles.td}>{getSafeDueDate(r).toLocaleDateString('vi-VN')}</td>
                         
@@ -254,7 +260,6 @@ function BorrowHistory() {
               </tbody>
             </table>
 
-            {/* 🔥 ĐỒNG BỘ: Thanh phân trang Pastel chuẩn tâm đối xứng tâm tuyệt đối */}
             {totalPages > 1 && (
               <div style={styles.paginationContainer}>
                 <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} style={styles.pageArrowBtn(currentPage === 1)}>«</button>
@@ -268,7 +273,6 @@ function BorrowHistory() {
         )}
       </div>
 
-      {/* CUSTOM MODAL */}
       {showReturnModal && (
         <div style={styles.modalOverlay}>
           <div style={styles.modalBox}>
@@ -303,7 +307,6 @@ const styles = {
   cancelModalBtn: { padding: '8px 16px', backgroundColor: '#e2e3e5', color: '#383d41', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' },
   confirmModalBtn: { padding: '8px 16px', backgroundColor: '#007bff', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' },
 
-  // 🔥 NÂNG CẤP ĐỒNG BỘ: Hệ nút tròn phân trang Pastel chống lệch tâm CSS tối ưu
   paginationContainer: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '24px', padding: '10px 0' },
   pageCircleBtn: (isActive) => ({ 
     width: '32px', 

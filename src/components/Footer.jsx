@@ -4,7 +4,7 @@ function Footer() {
 
   return (
     <footer style={styles.footer}>
-      <div style={styles.topSection}>
+      <div style={styles.topSection} className="footer-top">
         <div style={styles.brandCol}>
           <h4 style={styles.title}>TRƯỜNG ĐẠI HỌC KỸ THUẬT - CÔNG NGHỆ CẦN THƠ</h4>
           <p style={styles.subText}>Hệ thống Quản lý Thư viện Điện tử thông minh (CTUT LMS MVP)</p>

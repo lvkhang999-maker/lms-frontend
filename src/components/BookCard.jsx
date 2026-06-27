@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 
 function BookCard({ book }) {
   return (
-    <div style={styles.card}>
+    <div style={styles.card} className="book-card-item">
       <img src={book.cover} alt={book.title} style={styles.cover} />
       <div style={styles.info}>
         {book.quantity <= 2 && book.quantity > 0 && (
