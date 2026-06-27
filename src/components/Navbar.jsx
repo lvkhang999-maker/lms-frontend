@@ -18,7 +18,7 @@ function Navbar() {
       <div style={styles.leftBrand} className="navbar-left">
         
         <Link to="/" style={styles.logoWrapper}>
-          <img src="./logo.png" alt="CTUT Logo" style={styles.logoImg} />
+          <img src="/logo.png" alt="CTUT Logo" style={styles.logoImg} />
           <span style={styles.logoText}></span>
         </Link>
         
